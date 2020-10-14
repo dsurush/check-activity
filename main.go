@@ -13,14 +13,14 @@ import (
 
 func DoRequest(time int64, status bool, token string) bool {
 	client := &http.Client{}
-	body := fmt.Sprintf(`"time" : %d
-"status" : %t`, time, status)
-	fmt.Println(body)
+//	body := fmt.Sprintf(`"time" : %d
+//"status" : %t`, time, status)
+//	fmt.Println(body)
 	AuthToken := fmt.Sprintf(`Bearer %s`, token)
-	//	s := `{
-//  "time" : 960,
-//  "status" : false
-//}`
+		body := `{
+ "time" : 360,
+ "status" : false
+}`
 	req, err := http.NewRequest(
 		"POST", "http://127.0.0.1:8888/api/exit", bytes.NewBuffer([]byte(body)),
 	)
@@ -81,11 +81,28 @@ func GetActivitiesFromDB(pool *pgxpool.Pool) (Activities []models.Activity, err 
 	return
 }
 
-func SendRequests(Activities []models.Activity) {
+func SubmitStatusTrue(userId int64, pool *pgxpool.Pool){
+	conn, err := pool.Acquire(context.Background())
+	if err != nil {
+		log.Printf("can't get connection %e", err)
+	}
+	defer conn.Release()
+	_, err = conn.Exec(context.Background(), `Update activities set exited = true where user_id = ($1)`, userId)
+	if err != nil {
+		fmt.Printf(" Cant Update %e", err)
+		return
+	}
+}
+
+func SendRequests(Activities []models.Activity, pool *pgxpool.Pool) {
 	for _, value := range Activities {
-		ok := DoRequest(value.WorkTime, value.Status, value.Token)
-		if !ok {
-			fmt.Println(`Cant send request to user with user_id =`, value.UserId)
+		if time.Now().Unix() - value.UnixTime > 120 {
+			ok := DoRequest(value.WorkTime, value.Status, value.Token)
+			if !ok {
+				fmt.Println(`Cant send request to user with user_id =`, value.UserId)
+			} else {
+				SubmitStatusTrue(value.UserId, pool)
+			}
 		}
 	}
 }
@@ -105,7 +122,7 @@ func main() {
 			fmt.Println("Can't get from DB")
 			continue
 		}
-		SendRequests(activities)
+		SendRequests(activities, pool)
 		time.Sleep(time.Minute * 5)
 		//ok := DoRequest(960, false, `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6OCwiZXhwIjoxNjAyNjM5ODA3LCJsb2dpbiI6InRlc3QiLCJyb2xlIjoidXNlciJ9.HQtfZ1bqtEw-JR4YmAlJRGoHyTxRUCeNrAMIbSqTvfg`)
 		//fmt.Println(ok)
