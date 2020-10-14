@@ -13,14 +13,16 @@ import (
 
 func DoRequest(time int64, status bool, token string) bool {
 	client := &http.Client{}
-//	body := fmt.Sprintf(`"time" : %d
-//"status" : %t`, time, status)
-//	fmt.Println(body)
+	body := fmt.Sprintf(`{
+"time" : %d,
+"status" : %t
+}`, time, status)
+	fmt.Println(body)
 	AuthToken := fmt.Sprintf(`Bearer %s`, token)
-		body := `{
- "time" : 360,
- "status" : false
-}`
+//		body := `{
+// "time" : 360,
+// "status" : false
+//}`
 	req, err := http.NewRequest(
 		"POST", "http://127.0.0.1:8888/api/exit", bytes.NewBuffer([]byte(body)),
 	)
@@ -108,6 +110,7 @@ func SendRequests(Activities []models.Activity, pool *pgxpool.Pool) {
 }
 
 func main() {
+	//pool, err := pgxpool.Connect(context.Background(), `postgres://dsurush:dsurush@172.16.7.252:5432/ccs?sslmode=disable`)
 	pool, err := pgxpool.Connect(context.Background(), `postgres://dsurush:dsurush@localhost:5432/ccd?sslmode=disable`)
 	if err != nil {
 		log.Printf("Owibka - %e", err)
